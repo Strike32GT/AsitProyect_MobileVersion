@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     //maps
     implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.maps.android:maps-compose:2.11.4")
     //navegacion
     implementation("androidx.navigation:navigation-compose:2.9.6")
     testImplementation(libs.junit)
