@@ -1,22 +1,22 @@
 package com.soca.asitproyect.ViewModel
 
-import androidx.compose.material3.CardElevation
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import com.google.android.gms.maps.model.LatLng
+//import com.google.android.gms.maps.model.LatLng
 import com.soca.asitproyect.data.model.AnalysisResult
+import com.soca.asitproyect.data.model.GeoPoint
 
 class MapViewModel : ViewModel(){
 
-    private val _selectedPoint = mutableStateOf<LatLng?>(null)
-    val selectedPoint: State<LatLng?> = _selectedPoint
+    private val _selectedPoint = mutableStateOf<GeoPoint?>(null)
+    val selectedPoint: State<GeoPoint?> = _selectedPoint
 
     private val _analysistResult = mutableStateOf<AnalysisResult?>(null)
     val analysistResult: State<AnalysisResult?> = _analysistResult
 
-    fun onMapClick(latLng: LatLng) {
-        _selectedPoint.value=latLng
+    fun onMapClick(point: GeoPoint) {
+        _selectedPoint.value= point
         _analysistResult.value=null
     }
 
