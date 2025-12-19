@@ -54,7 +54,7 @@ dependencies {
     //implementation("com.google.maps.android:maps-compose:2.11.4")
     //MapLibre
     implementation("org.maplibre.gl:android-sdk:11.12.1")
-    implementation("org.maplibre.gl:android-sdk-geojson:6.0.1")
+    implementation("org.maplibre.gl:android-sdk-turf:6.0.1")
     //LifeCycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
 

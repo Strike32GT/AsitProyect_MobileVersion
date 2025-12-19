@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.*
 import androidx.lifecycle.*
@@ -17,7 +20,9 @@ import org.maplibre.android.maps.*
 import org.maplibre.android.style.layers.*
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.*
+import org.maplibre.turf.TurfJoins
 import com.soca.asitproyect.ViewModel.MapViewModel
+import com.soca.asitproyect.data.model.AnalysisResult
 import com.soca.asitproyect.data.model.GeoPoint
 import kotlin.math.*
 
@@ -37,6 +42,7 @@ fun MainIndex() {
     val viewModel: MapViewModel = viewModel()
     val puntoSeleccion by viewModel.selectedPoint
     val resultadoAnalisis by viewModel.analysistResult
+    val showInfoCard by viewModel.showInfoCard
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var mapStyle by remember { mutableStateOf<Style?>(null) }
@@ -115,9 +121,23 @@ fun MainIndex() {
                             }
 
                             map.addOnMapClickListener { latLng ->
-                                viewModel.onMapClick(
-                                    GeoPoint(latitud = latLng.latitude, longitud = latLng.longitude)
-                                )
+                                val point = GeoPoint(latLng.latitude, latLng.longitude)
+                                val style = mapStyle
+                                val result = resultadoAnalisis
+                                if(style !=null && result !=null){
+                                    val allowedSource = style.getSourceAs<GeoJsonSource>(SRC_ALLOWED)
+                                    val collection = allowedSource?.querySourceFeatures(null)
+
+                                    val polygon = collection
+                                        ?.firstOrNull()
+                                        ?.geometry() as? Polygon
+
+                                    if (polygon !=null && isPointInsidePolygon(point.latitud, point.longitud, polygon)){
+                                        viewModel.onObstacleTapped()
+                                        return@addOnMapClickListener true
+                                    }
+                                }
+                                viewModel.onMapClick(point)
                                 true
                             }
                         }
@@ -185,21 +205,48 @@ fun MainIndex() {
                 .align(Alignment.BottomCenter)
                 .padding(16.dp),
             enabled = puntoSeleccion != null,
-            onClick = { viewModel.analyze(elevation = 80.0) }
+            onClick = { viewModel.analyze(elevation = 80.0) },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF014680)
+            )
         ) {
             Text(text = "Analizar")
         }
+
+
+
+        
 
         resultadoAnalisis?.let { result ->
             Card(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(16.dp)
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (result.isAllowed) Color(0xFF2E7D32) else Color(0xFFC62828)
+                )
             ) {
                 Text(
                     modifier = Modifier.padding(16.dp),
-                    text = if (result.isAllowed) "Obra permitida"
-                    else "Excede ${result.metrosExcedentes.toInt()} metros"
+                    color = Color.White,
+                    text = if (result.isAllowed)
+                        "Obra permitida"
+                    else
+                        "Excede ${result.metrosExcedentes.toInt()} metros"
+                )
+            }
+        }
+
+        if(showInfoCard && puntoSeleccion !=null && resultadoAnalisis != null){
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 80.dp)
+            ) {
+                ObstacleInfoCard(
+                    point = puntoSeleccion!!,
+                    result = resultadoAnalisis!!,
+                    onClose = {viewModel.hideInfoCard()}
                 )
             }
         }
@@ -232,6 +279,68 @@ private fun updateAnalysisLayersWithPreparedPolygons(
         exceed?.setGeoJson(FeatureCollection.fromFeatures(arrayOf()))
     }
 }
+
+
+private fun isPointInsidePolygon(
+    lat: Double,
+    lng: Double,
+    polygon: Polygon
+): Boolean {
+    val point = Point.fromLngLat(lng, lat)
+    return TurfJoins.inside(point, polygon)
+}
+
+
+@Composable
+fun ObstacleInfoCard(point: GeoPoint, result: AnalysisResult, onClose: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(8.dp)
+    ){
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ){
+            Text(
+                text = "Información del obstáculo",
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("Latitud: ${"%.6f".format(point.latitud)}")
+            Text("Longitud: ${"%.6f".format(point.longitud)}")
+            Text("Radio Permitido: ${result.radioPermitido.toInt()} m")
+
+            if(!result.isAllowed){
+                Text(
+                    text = "Exceso: ${result.metrosExcedentes.toInt()} m",
+                    color = Color.Red
+                )
+            } else {
+                Text(
+                    text= "Dentro del limite permitido",
+                    color= Color(0xFF2E7D32)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onClose,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF014680))
+            ){
+                Text(
+                    text = "Cerrar",
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
 
 private fun circlePolygon(
     lat: Double,
